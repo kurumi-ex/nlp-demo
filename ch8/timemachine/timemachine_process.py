@@ -112,7 +112,7 @@ class Vocabulary:
         return self._valid_token_freq
 
 
-def get_vocabulary(token_type: Literal['word', 'char'] = 'word', special_tokens=None) -> Vocabulary:
+def get_vocabulary(token_type: Literal['word', 'char'] = 'word', special_tokens=None) -> (Vocabulary, list[int]):
     """
     :param token_type: ['word', 'char'] 默认 'word'
     :param special_tokens: 枚举类ST中的
@@ -129,6 +129,9 @@ def get_vocabulary(token_type: Literal['word', 'char'] = 'word', special_tokens=
     for line in lines:
         token = tokenize(line, token_type)
         tokens.extend(token)
+    vocab = Vocabulary(tokens, special_tokens)
+    # 语段的索引获取
+    corpus = [vocab.get_index(token) for token in tokens]
 
-    # 获得词表
-    return Vocabulary(tokens, special_tokens)
+    # 获得词表和语段表
+    return vocab, corpus
