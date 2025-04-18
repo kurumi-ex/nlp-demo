@@ -17,12 +17,11 @@ class SimpleRNN(nn.Module):
     def __init__(self, vocab_size, hidden_size):
         super().__init__()
         self.vocab_size = vocab_size
-        self.rnn = nn.RNN(vocab_size, hidden_size)
-        self.tanh = nn.Tanh()
+        self.rnn = nn.RNN(vocab_size, hidden_size, num_layers=2)
         self.fc1 = nn.Linear(hidden_size, vocab_size)
 
     def forward(self, x, state=None):
         x = nn.functional.one_hot(x, self.vocab_size).float()
         y, state = self.rnn(x) if state is None else self.rnn(x, state)
-        ans = self.fc1(self.tanh(y))
+        ans = self.fc1(y)
         return ans, state

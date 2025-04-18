@@ -10,7 +10,7 @@ model = SimpleRNN(len(vocab), 256)
 model.load_state_dict(torch.load('./runs/best_simple_rnn.pth'))
 model.eval()
 
-words = [['i', 'am'], ['the', 'time', 'machine']]
+words = [['i', 'am'], ['time', 'machine']]
 
 for word in words:
     prefix = [vocab.get_index(w) for w in word]
