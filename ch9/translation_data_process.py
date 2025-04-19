@@ -1,10 +1,4 @@
-import os
-from pathlib import Path
-import re
-from typing import Literal
-import requests
-from enum import Enum
-from collections import Counter
+import torch
 
 from ch8.timemachine.timemachine_process import Vocabulary, ST
 
@@ -50,7 +44,36 @@ def flatten(src_list):
     return res
 
 
-raw_nmt = get_raw_nmt()
-s, t = tokenize_nmt(raw_nmt)
-src_vocab = Vocabulary(flatten(s), [ST.UNK, ST.PAD, ST.SOS, ST.EOS])
-print(src_vocab.vocabulary)
+def get_seq(vocab: Vocabulary, slist):
+    res = []
+    for item in slist:
+        res.append([vocab.get_index(e) for e in item] + [vocab.get_index(str(ST.EOS))])
+    return res
+
+
+def truncate_pad(line, num_steps, padding_token):
+    if len(line) > num_steps:
+        return line[:num_steps]
+    else:
+        return line + [padding_token] * (num_steps - len(line))
+
+
+def get_data(min_freq=2, time_steps=20, voc=None):
+    raw_nmt = get_raw_nmt()
+    s, t = tokenize_nmt(raw_nmt)
+    # s 为 2维的列表
+    src_vocab = Vocabulary(flatten(s), [ST.UNK, ST.PAD, ST.SOS, ST.EOS], min_freq=min_freq)
+    tar_vocab = Vocabulary(flatten(t), [ST.UNK, ST.PAD, ST.SOS, ST.EOS], min_freq=min_freq)
+    if voc:
+        return src_vocab, tar_vocab
+
+    src_raw_seq = get_seq(src_vocab, s)
+    pad_token = src_vocab.get_index(str(ST.PAD))
+    src_pad_seq = [truncate_pad(e, time_steps, pad_token) for e in src_raw_seq]
+    src_tensor = torch.LongTensor(src_pad_seq)
+
+    tar_raw_seq = get_seq(tar_vocab, t)
+    pad_token = tar_vocab.get_index(str(ST.PAD))
+    tar_pad_seq = [truncate_pad(e, time_steps, pad_token) for e in tar_raw_seq]
+    tar_tensor = torch.LongTensor(tar_pad_seq)
+    return src_vocab, tar_vocab, src_tensor, tar_tensor
