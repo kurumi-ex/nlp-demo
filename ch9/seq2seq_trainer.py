@@ -4,29 +4,45 @@ from torch.utils.data import DataLoader
 
 from translation_data_process import get_data
 from translation_data import *
-from s2s_model import SimpleSeq2seq
+from s2s_model import SimpleSeq2seq, MaskedSoftmaxCELoss
 from myutils.tools import draw_train_pic
+from ch8.timemachine.timemachine_process import ST
 
-src_vocab, tar_vocab, src_tensor, tar_tensor = get_data()
-train_data = TranslationDataset(src_tensor, tar_tensor)
-dataloader = DataLoader(train_data, batch_size=16, shuffle=True)
+batch_size = 64
+src_vocab, tar_vocab, src_tensor, tar_tensor, src_len, tar_len = get_data()
+train_data = TranslationDataset(src_tensor, tar_tensor, src_len, tar_len)
+dataloader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = SimpleSeq2seq(len(src_vocab), 32, 0.1)
+model = SimpleSeq2seq(len(src_vocab), len(tar_vocab), 32, 0.1)
 model.to(device)
-model.train()
 epochs = 100
 lr = 2e-3
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-loss_fn = nn.MSELoss()
+loss_fn = MaskedSoftmaxCELoss()
 
 loss_history = []
 min_loss = 0x3f3f3f3f
 for epoch in range(epochs):
-    for batch in dataloader:
-        x, y = batch
-        pred, _ = model(x.to(device), y.to(device))
+    cur_loss = 0
+    for x, y, y_valid_len in dataloader:
         optimizer.zero_grad()
-        print('ok')
+        # 获得decoder的输入 在y之前加个开始符号
+        sos_token = tar_vocab.get_index(str(ST.SOS))
+        sos = torch.LongTensor([sos_token] * y.size(0)).reshape(y.size(0), 1)
+        dec_input = torch.cat((sos, y[:, :-1]), dim=1)
+        pred, _ = model(x.to(device), dec_input.to(device))
 
+        loss = loss_fn(pred, y.to(device), y_valid_len.to(device))
+        cur_loss += loss.item()
+        loss.backward()
+        optimizer.step()
+    cur_loss /= len(dataloader)
+    print("epoch %d, loss %.3f" % (epoch + 1, cur_loss))
+    loss_history.append(cur_loss)
+    if cur_loss < min_loss:
+        min_loss = cur_loss
+        torch.save(model.state_dict(), "./runs/seq2seq_best.pt")
+
+torch.save(model.state_dict(), "./runs/seq2seq_last.pt")
 draw_train_pic(loss_history, "SimpleSeq2seq train loss")

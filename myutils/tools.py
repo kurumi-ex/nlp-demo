@@ -32,3 +32,7 @@ def predict_ch8(prefix, vocab: Vocabulary, num_pred, net):
         y, state = net(torch.tensor(res[-1]).reshape(1, 1), state)
         res.append(int(y.argmax(dim=-1).reshape(1)))
     return "".join([vocab.get_token(x) + ' ' for x in res])
+
+
+def get_mash():
+    pass

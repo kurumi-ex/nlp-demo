@@ -46,9 +46,11 @@ def flatten(src_list):
 
 def get_seq(vocab: Vocabulary, slist):
     res = []
+    valid_len = []
     for item in slist:
+        valid_len.append(len(item))
         res.append([vocab.get_index(e) for e in item] + [vocab.get_index(str(ST.EOS))])
-    return res
+    return res, valid_len
 
 
 def truncate_pad(line, num_steps, padding_token):
@@ -67,13 +69,15 @@ def get_data(min_freq=2, time_steps=20, voc=None):
     if voc:
         return src_vocab, tar_vocab
 
-    src_raw_seq = get_seq(src_vocab, s)
+    src_raw_seq, src_len = get_seq(src_vocab, s)
     pad_token = src_vocab.get_index(str(ST.PAD))
     src_pad_seq = [truncate_pad(e, time_steps, pad_token) for e in src_raw_seq]
     src_tensor = torch.LongTensor(src_pad_seq)
+    src_len = torch.LongTensor([e if e < time_steps else time_steps for e in src_len])
 
-    tar_raw_seq = get_seq(tar_vocab, t)
+    tar_raw_seq, tar_len = get_seq(tar_vocab, t)
     pad_token = tar_vocab.get_index(str(ST.PAD))
     tar_pad_seq = [truncate_pad(e, time_steps, pad_token) for e in tar_raw_seq]
     tar_tensor = torch.LongTensor(tar_pad_seq)
-    return src_vocab, tar_vocab, src_tensor, tar_tensor
+    tar_len = torch.LongTensor([e if e < time_steps else time_steps for e in tar_len])
+    return src_vocab, tar_vocab, src_tensor, tar_tensor, src_len, tar_len
