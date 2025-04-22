@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from ch8.timemachine.timemachine_process import Vocabulary
+from ch8.timemachine.timemachine_process import Vocabulary, ST
 
 
 def draw_train_pic(y, pic_name: str):
@@ -34,5 +34,11 @@ def predict_ch8(prefix, vocab: Vocabulary, num_pred, net):
     return "".join([vocab.get_token(x) + ' ' for x in res])
 
 
-def get_mash():
-    pass
+def predict_seq2seq(prefix, vocab: Vocabulary, net, num_steps=5):
+    enc_input = torch.LongTensor(prefix).reshape(1, -1)
+    token1 = vocab.get_index(str(ST.SOS))
+    token2 = vocab.get_index(str(ST.EOS))
+    net.eval()
+    with torch.no_grad():
+        res = net.predict(enc_input, token1, token2, num_steps)
+    return " ".join([vocab.get_token(x) + ' ' for x in res])

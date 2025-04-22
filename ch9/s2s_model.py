@@ -25,6 +25,7 @@ class Decoder(nn.Module):
     def __init__(self, vocab_size, embedding_size, dropout,
                  hidden_size=64, num_layers=2):
         super().__init__()
+        self.initial_state = None
         self.embedding = nn.Embedding(vocab_size, embedding_size)
         self.gru = nn.GRU(input_size=embedding_size + hidden_size,
                           hidden_size=hidden_size,
@@ -36,7 +37,7 @@ class Decoder(nn.Module):
     def forward(self, x, state):
         x = self.embedding(x)
         # 获取 最后一层rnn的最后时刻状态 size为batch_size hidden
-        context = state[-1]
+        context = self.initial_state[-1] if self.initial_state is not None else state[-1]
         # 将batch_size hidden 这个状态扩展到每个时间段都有一个 res为time_steps batch_size hidden
         context = context.repeat(x.size(1), 1, 1)
         # 调整 batch_size time_steps hidden
@@ -44,6 +45,10 @@ class Decoder(nn.Module):
         x_and_context = torch.cat((x, context), 2)
         output, state = self.gru(x_and_context, state)
         return self.fc(output), state
+
+    def set_initial_state(self, initial_state):
+        # 用于保存 encoder 的输出
+        self.initial_state = initial_state
 
 
 class SimpleSeq2seq(nn.Module):
@@ -57,6 +62,20 @@ class SimpleSeq2seq(nn.Module):
         _, state = self.encoder(src)
         output, state = self.decoder(tar, state)
         return output, state
+
+    def predict(self, src, sos_id, eos_id,num_steps):
+        _, state = self.encoder(src)
+        self.decoder.set_initial_state(state)
+        x = torch.LongTensor([sos_id]).reshape(1, 1)
+        res = []
+        for i in range(num_steps):
+            x, state = self.decoder(x, state)
+            pred_label = int(x.argmax(dim=-1).reshape(1))
+            if pred_label == eos_id:
+                return res
+            res.append(pred_label)
+            x = torch.LongTensor([pred_label]).reshape(1, 1)
+        return res
 
 
 def sequence_mask(x, valid_len, value=0):
@@ -82,6 +101,7 @@ class MaskedSoftmaxCELoss(nn.Module):
     def forward(self, pred, label, valid_len):
         weights = torch.ones_like(label)
         mask = sequence_mask(weights, valid_len)
+        # TODO why?
         unmasked_loss = self.cross_entropy(pred.permute(0, 2, 1), label)
         masked_loss = (unmasked_loss * mask).mean(dim=1)
         return masked_loss.sum()

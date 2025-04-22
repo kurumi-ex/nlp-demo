@@ -60,7 +60,7 @@ def truncate_pad(line, num_steps, padding_token):
         return line + [padding_token] * (num_steps - len(line))
 
 
-def get_data(min_freq=2, time_steps=20, voc=None):
+def get_data(min_freq=1, time_steps=20, voc=None):
     raw_nmt = get_raw_nmt()
     s, t = tokenize_nmt(raw_nmt)
     # s 为 2维的列表
