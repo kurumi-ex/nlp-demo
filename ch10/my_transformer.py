@@ -72,6 +72,7 @@ class MultiAttention(nn.Module):
             """
             mask_mat = torch.tril(torch.ones(seq_len, seq_len)).to("cuda")
             weights = weights.masked_fill(mask_mat == 0, float("-inf"))
+        # 选那个维度 那个维度变化着计算softmax 计算时候其它维度不变
         softmax_score = F.softmax(weights, dim=-1)
         softmax_score = self.dropout(softmax_score)
 
