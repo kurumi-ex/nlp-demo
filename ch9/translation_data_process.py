@@ -18,9 +18,7 @@ def preprocess_nmt(text):
     return ''.join(out)
 
 
-def get_raw_nmt():
-    file_path = './fra-eng/fra.txt'
-
+def get_raw_nmt(file_path):
     with open(file_path, 'r', encoding='utf-8') as f:
         return preprocess_nmt(f.read())
 
@@ -60,8 +58,8 @@ def truncate_pad(line, num_steps, padding_token):
         return line + [padding_token] * (num_steps - len(line))
 
 
-def get_data(min_freq=1, time_steps=20, voc=None):
-    raw_nmt = get_raw_nmt()
+def get_data(file_path, min_freq=1, time_steps=20, voc=None):
+    raw_nmt = get_raw_nmt(file_path)
     s, t = tokenize_nmt(raw_nmt)
     # s 为 2维的列表
     src_vocab = Vocabulary(flatten(s), [ST.UNK, ST.PAD, ST.SOS, ST.EOS], min_freq=min_freq)
